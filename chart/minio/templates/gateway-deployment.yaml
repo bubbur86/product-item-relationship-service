@@ -1,4 +1,4 @@
-{{- if eq .Values.mode "standalone" }}
+{{- if eq .Values.mode "gateway" }}
 {{ $scheme := "http" }}
 {{- if .Values.tls.enabled }}
 {{ $scheme = "https" }}
@@ -29,7 +29,7 @@ spec:
       maxSurge: {{ .Values.DeploymentUpdate.maxSurge }}
       maxUnavailable: {{ .Values.DeploymentUpdate.maxUnavailable }}
     {{- end}}
-  replicas: 1
+  replicas: {{ .Values.gateway.replicas }}
   selector:
     matchLabels:
       app: {{ template "minio.name" . }}
@@ -60,9 +60,6 @@ spec:
         runAsUser: {{ .Values.securityContext.runAsUser }}
         runAsGroup: {{ .Values.securityContext.runAsGroup }}
         fsGroup: {{ .Values.securityContext.fsGroup }}
-        {{- if and (ge .Capabilities.KubeVersion.Major "1") (ge .Capabilities.KubeVersion.Minor "20") }}
-        fsGroupChangePolicy: {{ .Values.securityContext.fsGroupChangePolicy }}
-        {{- end }}
 {{- end }}
 {{ if .Values.serviceAccount.create }}
       serviceAccountName: {{ .Values.serviceAccount.name }}
@@ -74,7 +71,9 @@ spec:
           command:
             - "/bin/sh"
             - "-ce"
-            - "/usr/bin/docker-entrypoint.sh minio server {{ $bucketRoot }} -S {{ .Values.certsPath }} --address :{{ .Values.minioAPIPort }} --console-address :{{ .Values.minioConsolePort }} {{- template "minio.extraArgs" . }}"
+            {{- if eq .Values.gateway.type "nas" }}
+            - "/usr/bin/docker-entrypoint.sh minio gateway nas {{ $bucketRoot }} -S {{ .Values.certsPath }} --address :{{ .Values.minioAPIPort }} --console-address :{{ .Values.minioConsolePort }} {{- template "minio.extraArgs" . }} "
+            {{- end }}
           volumeMounts:
             - name: minio-user
               mountPath: "/tmp/credentials"
@@ -120,11 +119,11 @@ spec:
               value: {{ join "," .Values.etcd.endpoints | quote }}
             {{- if .Values.etcd.clientCert }}
             - name: MINIO_ETCD_CLIENT_CERT
-              value: "/tmp/credentials/etcd_client_cert.pem"
+              value: "/tmp/credentials/etcd_client.crt"
             {{- end }}
             {{- if .Values.etcd.clientCertKey }}
             - name: MINIO_ETCD_CLIENT_CERT_KEY
-              value: "/tmp/credentials/etcd_client_cert_key.pem"
+              value: "/tmp/credentials/etcd_client.key"
             {{- end }}
             {{- if .Values.etcd.pathPrefix }}
             - name: MINIO_ETCD_PATH_PREFIX
@@ -162,13 +161,13 @@ spec:
         {{- else }}
           emptyDir: {}
         {{- end }}
+        - name: minio-user
+          secret:
+            secretName: {{ template "minio.secretName" . }}
         {{- if .Values.extraSecret }}
         - name: extra-secret
           secret:
             secretName: {{ .Values.extraSecret }}
         {{- end }}
-        - name: minio-user
-          secret:
-            secretName: {{ template "minio.secretName" . }}
         {{- include "minio.tlsKeysVolume" . | indent 8 }}
 {{- end }}

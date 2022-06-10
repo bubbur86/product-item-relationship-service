@@ -1,39 +1,66 @@
-# Default values for minio.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
+## Provide a name in place of minio for `app:` labels
+##
+nameOverride: ""
 
-replicaCount: 1
+## Provide a name to substitute for the full names of resources
+##
+fullnameOverride: ""
 
+## set kubernetes cluster domain where minio is running
+##
+clusterDomain: cluster.local
+
+## Set default image, imageTag, and imagePullPolicy. mode is used to indicate the
+##
 image:
   repository: quay.io/minio/minio
+  tag: RELEASE.2022-05-08T23-50-31Z
   pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
-  tag: "RELEASE.2022-05-08T23-50-31Z"
 
 imagePullSecrets: []
-nameOverride: "minio"
-fullnameOverride: "minio"
+# - name: "image-pull-secret"
+
+## Set default image, imageTag, and imagePullPolicy for the `mc` (the minio
+## client used to create a default bucket).
+##
+mcImage:
+  repository: quay.io/minio/mc
+  tag: RELEASE.2022-05-09T04-08-26Z
+  pullPolicy: IfNotPresent
 
 ## minio mode, i.e. standalone or distributed or gateway.
-mode: distributed ## other supported values are "standalone", "gateway"  
+mode: distributed ## other supported values are "standalone", "gateway"
+
+## Additional labels to include with deployment or statefulset
+additionalLabels: []
+
+## Additional annotations to include with deployment or statefulset
+additionalAnnotations: []
+
+## Typically the deployment/statefulset includes checksums of secrets/config,
+## So that when these change on a subsequent helm install, the deployment/statefulset 
+## is restarted. This can result in unnecessary restarts under GitOps tooling such as 
+## flux, so set to "true" to disable this behaviour.
+ignoreChartChecksums: false
+
+## Additional arguments to pass to minio binary
+extraArgs: []
 
 ## Port number for MinIO S3 API Access
 minioAPIPort: "9000"
 
-# Number of drives attached to a node
-drivesPerNode: 1
+## Port number for MinIO Browser COnsole Access
+minioConsolePort: "9001"
 
-# Number of expanded MinIO clusters
-pools: 1
+## Update strategy for Deployments
+DeploymentUpdate:
+  type: RollingUpdate
+  maxUnavailable: 0
+  maxSurge: 100%
 
-serviceAccount:
-  # Specifies whether a service account should be created
-  create: true
-  # Annotations to add to the service account
-  annotations: {}
-  # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template
-  name: ""
+## Update strategy for StatefulSets
+StatefulSetUpdate:
+  updateStrategy: RollingUpdate
 
 ## Pod priority settings
 ## ref: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
@@ -44,8 +71,8 @@ priorityClassName: ""
 ## AccessKey and secretKey is generated when not set
 ## Distributed MinIO ref: https://docs.minio.io/docs/distributed-minio-quickstart-guide
 ##
-rootUser: <path:product-traceability-irs/data/dev/minio#minioDevUser>
-rootPassword: <path:product-traceability-irs/data/dev/minio#minioDevUserPassword>
+rootUser: ""
+rootPassword: ""
 
 ## Use existing Secret that store following variables:
 ##
@@ -59,97 +86,29 @@ rootPassword: <path:product-traceability-irs/data/dev/minio#minioDevUserPassword
 ## others depend on enabled status of corresponding sections.
 existingSecret: ""
 
+## Directory on the MinIO pof
+certsPath: "/etc/minio/certs/"
+configPathmc: "/etc/minio/mc/"
+
 ## Path where PV would be mounted on the MinIO Pod
 mountPath: "/export"
-
-podAnnotations: {}
-
-podSecurityContext: {}
-  # fsGroup: 2000
-
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
-
-service:
-  type: ClusterIP
-  port: 9000
-
-ingress:
-  enabled: false
-  className: ""
-  annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
-  hosts:
-    - host: "app-irs-dev-minio"
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
-  tls:
-    - hosts:
-        - "app-irs-dev-minio"
-      secretName: tls-secret  
-
-## Configure resource requests and limits
-## ref: http://kubernetes.io/docs/user-guide/compute-resources/
+## Override the root directory which the minio server should serve from.
+## If left empty, it defaults to the value of {{ .Values.mountPath }}
+## If defined, it must be a sub-directory of the path specified in {{ .Values.mountPath }}
 ##
-resources:
-  requests:
-    memory: 4Gi
+bucketRoot: ""
 
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 100
-  targetCPUUtilizationPercentage: 80
-  # targetMemoryUtilizationPercentage: 80
+# Number of drives attached to a node
+drivesPerNode: 1
+# Number of MinIO containers running
+replicas: 16
+# Number of expanded MinIO clusters
+pools: 1
 
-## The name of a secret in the same kubernetes namespace which contain secret values
-## This can be useful for LDAP password, etc
-## The key in the secret must be 'config.env'
-##
-# extraSecret: minio-extraenv
-
-networkPolicy:
-  enabled: false
-  allowExternal: true  
-
-nodeSelector: {}
-
-tolerations: []
-
-# Following Catena-X Helm Best Practices @url: https://catenax-ng.github.io/docs/kubernetes-basics/helm
-# @url: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
-affinity:
-  podAntiAffinity:
-    preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          labelSelector:
-            matchExpressions:
-              - key: app.kubernetes.io/name
-                operator: DoesNotExist
-          topologyKey: kubernetes.io/hostname
-
-# Following Catena-X Helm Best Practices @url: https://catenax-ng.github.io/docs/kubernetes-basics/helm
-# @url: https://github.com/helm/charts/blob/master/stable/nginx-ingress/values.yaml#L210
-livenessProbe:
-  failureThreshold: 6
-  initialDelaySeconds: 30
-  periodSeconds: 10
-  successThreshold: 1
-  timeoutSeconds: 1
-readinessProbe:
-  failureThreshold: 3
-  initialDelaySeconds: 30
-  periodSeconds: 10
-  successThreshold: 1
-  timeoutSeconds: 1
+# Deploy if 'mode == gateway' - 4 replicas.
+gateway:
+  type: "nas" # currently only "nas" are supported.
+  replicas: 4
 
 ## TLS Settings for MinIO
 tls:
@@ -189,7 +148,7 @@ persistence:
   storageClass: ""
   VolumeName: ""
   accessMode: ReadWriteOnce
-  size: 500Gi
+  size: 4Gi
 
   ## If subPath is set mount a sub folder of a volume instead of the root of the volume.
   ## This is especially handy for volume plugins that don't natively support sub mounting (like glusterfs).
@@ -206,3 +165,282 @@ service:
   ## Make sure to match it to minioAPIPort
   port: "9000"
   nodePort: 32000
+
+## Configure Ingress based on the documentation here: https://kubernetes.io/docs/concepts/services-networking/ingress/
+##
+
+ingress:
+  enabled: false
+  # ingressClassName: ""
+  labels: {}
+    # node-role.kubernetes.io/ingress: platform
+
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+    # kubernetes.io/ingress.allow-http: "false"
+    # kubernetes.io/ingress.global-static-ip-name: ""
+    # nginx.ingress.kubernetes.io/secure-backends: "true"
+    # nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    # nginx.ingress.kubernetes.io/whitelist-source-range: 0.0.0.0/0
+  path: /
+  hosts:
+    - minio-example.local
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+consoleService:
+  type: ClusterIP
+  clusterIP: ~
+  ## Make sure to match it to minioConsolePort
+  port: "9001"
+  nodePort: 32001
+
+consoleIngress:
+  enabled: false
+  # ingressClassName: ""
+  labels: {}
+    # node-role.kubernetes.io/ingress: platform
+
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+    # kubernetes.io/ingress.allow-http: "false"
+    # kubernetes.io/ingress.global-static-ip-name: ""
+    # nginx.ingress.kubernetes.io/secure-backends: "true"
+    # nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    # nginx.ingress.kubernetes.io/whitelist-source-range: 0.0.0.0/0
+  path: /
+  hosts:
+    - console.minio-example.local
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+## Node labels for pod assignment
+## Ref: https://kubernetes.io/docs/user-guide/node-selection/
+##
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+## Add stateful containers to have security context, if enabled MinIO will run as this
+## user and group NOTE: securityContext is only enabled if persistence.enabled=true
+securityContext:
+  enabled: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  fsGroupChangePolicy: "OnRootMismatch"
+
+# Additational pod annotations
+podAnnotations: {}
+
+# Additional pod labels
+podLabels: {}
+
+## Configure resource requests and limits
+## ref: http://kubernetes.io/docs/user-guide/compute-resources/
+##
+resources:
+  requests:
+    memory: 16Gi
+
+## List of policies to be created after minio install
+##
+## In addition to default policies [readonly|readwrite|writeonly|consoleAdmin|diagnostics]
+## you can define additional policies with custom supported actions and resources
+policies: []
+## writeexamplepolicy policy grants creation or deletion of buckets with name 
+## starting with example. In addition, grants objects write permissions on buckets starting with
+## example.
+# - name: writeexamplepolicy
+#   statements:
+#     - resources: 
+#         - 'arn:aws:s3:::example*/*'
+#       actions:
+#         - "s3:AbortMultipartUpload"
+#         - "s3:GetObject"
+#         - "s3:DeleteObject"
+#         - "s3:PutObject"
+#         - "s3:ListMultipartUploadParts"
+#     - resources: 
+#         - 'arn:aws:s3:::example*'
+#       actions:
+#         - "s3:CreateBucket"
+#         - "s3:DeleteBucket"
+#         - "s3:GetBucketLocation"
+#         - "s3:ListBucket"
+#         - "s3:ListBucketMultipartUploads"
+## readonlyexamplepolicy policy grants access to buckets with name starting with example. 
+## In addition, grants objects read permissions on buckets starting with example.
+# - name: readonlyexamplepolicy
+#   statements:
+#     - resources: 
+#         - 'arn:aws:s3:::example*/*'
+#       actions:
+#         - "s3:GetObject"
+#     - resources: 
+#         - 'arn:aws:s3:::example*'
+#       actions:
+#         - "s3:GetBucketLocation"
+#         - "s3:ListBucket"
+#         - "s3:ListBucketMultipartUploads"
+## Additional Annotations for the Kubernetes Job makePolicyJob
+makePolicyJob:
+  podAnnotations:
+  annotations:
+  securityContext:
+    enabled: false
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+  resources:
+    requests:
+      memory: 128Mi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+## List of users to be created after minio install
+##
+users:
+  ## Username, password and policy to be assigned to the user
+  ## Default policies are [readonly|readwrite|writeonly|consoleAdmin|diagnostics]
+  ## Add new policies as explained here https://docs.min.io/docs/minio-multi-user-quickstart-guide.html
+  ## NOTE: this will fail if LDAP is enabled in your MinIO deployment
+  ## make sure to disable this if you are using LDAP.
+  - accessKey: console
+    secretKey: console123
+    policy: consoleAdmin
+  # Or you can refer to specific secret
+  #- accessKey: externalSecret
+  #  existingSecret: my-secret
+  #  existingSecretKey: password
+  #  policy: readonly
+
+
+## Additional Annotations for the Kubernetes Job makeUserJob
+makeUserJob:
+  podAnnotations:
+  annotations:
+  securityContext:
+    enabled: false
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+  resources:
+    requests:
+      memory: 128Mi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+## List of buckets to be created after minio install
+##
+buckets:
+  #   # Name of the bucket
+  # - name: bucket1
+  #   # Policy to be set on the
+  #   # bucket [none|download|upload|public]
+  #   policy: none
+  #   # Purge if bucket exists already
+  #   purge: false
+  #   # set versioning for
+  #   # bucket [true|false]
+  #   versioning: false
+  # - name: bucket2
+  #   policy: none
+  #   purge: false
+  #   versioning: true
+
+## Additional Annotations for the Kubernetes Job makeBucketJob
+makeBucketJob:
+  podAnnotations:
+  annotations:
+  securityContext:
+    enabled: false
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+  resources:
+    requests:
+      memory: 128Mi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+## List of command to run after minio install
+## NOTE: the mc command TARGET is always "myminio"
+customCommands:
+  # - command: "admin policy set myminio consoleAdmin group='cn=ops,cn=groups,dc=example,dc=com'"
+
+## Additional Annotations for the Kubernetes Job customCommandJob
+customCommandJob:
+  podAnnotations:
+  annotations:
+  securityContext:
+    enabled: false
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+  resources:
+    requests:
+      memory: 128Mi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+## Use this field to add environment variables relevant to MinIO server. These fields will be passed on to MinIO container(s)
+## when Chart is deployed
+environment:
+  ## Please refer for comprehensive list https://docs.min.io/minio/baremetal/reference/minio-server/minio-server.html
+  ## MINIO_SUBNET_LICENSE: "License key obtained from https://subnet.min.io"
+  ## MINIO_BROWSER: "off"
+
+## The name of a secret in the same kubernetes namespace which contain secret values
+## This can be useful for LDAP password, etc
+## The key in the secret must be 'config.env'
+##
+# extraSecret: minio-extraenv
+
+networkPolicy:
+  enabled: false
+  allowExternal: true
+
+## PodDisruptionBudget settings
+## ref: https://kubernetes.io/docs/concepts/workloads/pods/disruptions/
+##
+podDisruptionBudget:
+  enabled: false
+  maxUnavailable: 1
+
+## Specify the service account to use for the MinIO pods. If 'create' is set to 'false'
+## and 'name' is left unspecified, the account 'default' will be used.
+serviceAccount:
+  create: true
+  ## The name of the service account to use. If 'create' is 'true', a service account with that name
+  ## will be created.
+  name: "minio-sa"
+
+metrics:
+  serviceMonitor:
+    enabled: false
+    public: true
+    additionalLabels: {}
+    relabelConfigs: {}
+    # namespace: monitoring
+    # interval: 30s
+    # scrapeTimeout: 10s
+
+## ETCD settings: https://github.com/minio/minio/blob/master/docs/sts/etcd.md
+## Define endpoints to enable this section.
+etcd:
+  endpoints: []
+  pathPrefix: ""
+  corednsPathPrefix: ""
+  clientCert: ""
+  clientCertKey: ""

@@ -52,9 +52,9 @@
         <checkstyle-plugin.version>3.1.2</checkstyle-plugin.version>
         <checkstyle.version>10.3</checkstyle.version>
         <jacoco.version>0.8.8</jacoco.version>
-        <pmd-plugin.version>3.16.0</pmd-plugin.version>
+        <pmd-plugin.version>3.17.0</pmd-plugin.version>
 
-        <surefire-plugin.version>3.0.0-M6</surefire-plugin.version>
+        <surefire-plugin.version>3.0.0-M7</surefire-plugin.version>
         <jar-plugin.version>3.2.2</jar-plugin.version>
         <flatten-plugin.version>1.2.7</flatten-plugin.version>
         <install-plugin.version>2.5.2</install-plugin.version>
@@ -150,7 +150,6 @@
                 <configuration>
                     <excludes>
                         <exclude>**/*Application.class</exclude>
-                        <exclude>**/irs-models/**/*</exclude>
                     </excludes>
                 </configuration>
                 <executions>

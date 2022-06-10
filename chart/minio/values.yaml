@@ -1,6 +1,6 @@
 ## Provide a name in place of minio for `app:` labels
 ##
-nameOverride: ""
+nameOverride: "minio"
 
 ## Provide a name to substitute for the full names of resources
 ##

@@ -1,10 +1,10 @@
 ## Provide a name in place of minio for `app:` labels
 ##
-nameOverride: "minio"
+nameOverride: "irs-dev-minio"
 
 ## Provide a name to substitute for the full names of resources
 ##
-fullnameOverride: ""
+fullnameOverride: "irs-dev-minio"
 
 ## set kubernetes cluster domain where minio is running
 ##
@@ -165,6 +165,9 @@ service:
   ## Make sure to match it to minioAPIPort
   port: "9000"
   nodePort: 32000
+
+autoscaling:
+  enabled: false  
 
 ## Configure Ingress based on the documentation here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ##

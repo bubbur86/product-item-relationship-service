@@ -1,10 +1,10 @@
 ## Provide a name in place of minio for `app:` labels
 ##
-nameOverride: "irs-dev-minio"
+nameOverride: "irs-dev01-minio"
 
 ## Provide a name to substitute for the full names of resources
 ##
-fullnameOverride: "irs-dev-minio"
+fullnameOverride: "irs-dev01-minio"
 
 ## set kubernetes cluster domain where minio is running
 ##

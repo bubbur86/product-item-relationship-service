@@ -19,29 +19,24 @@ jobs:
       contents: read
       security-events: write
 
-    name: surefire-action
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name: Cache maven packages
-        uses: actions/cache@v3
+      - uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-main-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
 
-      _ name: Set up JDK 17
-        uses: actions/setup-java@v3
-        with:
+      - uses: actions/setup-java@v3
+        with:          
           java-version: '17'
           distribution: 'temurin'
 
-        - run: cd tests && mvn clean test --batch-mode -Dmaven.test.failure.ignore=true
+      - run: cd tests && mvn clean test --batch-mode -Dmaven.test.failure.ignore=true
 
-        - name:
-        - uses: scacap/action-surefire-report@master
-          if: endsWith(github.ref, 'master') == false
-          with:
-            check_name: IRS Surefire Test Report
+      - uses: scacap/action-surefire-report@master
+        if: endsWith(github.ref, 'master') == false
+        with:
+          check_name: IRS Surefire Test Report
 

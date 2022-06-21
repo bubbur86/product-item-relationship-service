@@ -39,5 +39,7 @@ jobs:
         # if: endsWith(github.ref, 'master') == false
         with:
           check_name: IRS Surefire Test Report
-          link: https://sonarcloud.io/component_measures?metric=tests&view=list&id=catenax-ng_product-item-relationship-service
+        env:  
+          LINK: https://sonarcloud.io/component_measures?metric=tests&view=list&id=catenax-ng_product-item-relationship-service
+        run: echo ${{ LINK }}  
 

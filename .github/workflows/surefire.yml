@@ -33,10 +33,11 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - run: cd tests && mvn clean test --batch-mode -Dmaven.test.failure.ignore=true
+      # run: cd tests && mvn clean test --batch-mode -Dmaven.test.failure.ignore=true
 
       - uses: scacap/action-surefire-report@master
-        if: endsWith(github.ref, 'master') == false
+        # if: endsWith(github.ref, 'master') == false
         with:
           check_name: IRS Surefire Test Report
+          link: https://sonarcloud.io/component_measures?metric=tests&view=list&id=catenax-ng_product-item-relationship-service
 
